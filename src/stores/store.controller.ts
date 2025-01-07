@@ -9,7 +9,7 @@ export class StoreController {
 
   @Post('/createStore')
   createStore(@Body() body: CreateStoreDTO){
-    return this.storeService.createStore(body);
+    return this.storeService.createStore(body, body.postalCode);
   }
 
   @Get('/listAll')
@@ -22,18 +22,26 @@ export class StoreController {
   } // retorne as stores da base, response 1;
 
   @Get('/storeByCep/:cep')
-  storeByCep(@Param('cep') cep: string, @Query('type') type: string){
+  storeByCep(
+    @Param('cep') cep: string,
+    @Query('type') type: string, 
+    @Query('limit') limit: number, 
+    @Query('offset') offset: number){
   
-     return this.storeService.storeByCep(cep, type);
+     return this.storeService.storeByCep(cep, type, limit, offset);
 
   } //retorna stores que sejam próximos ou PDV, response 2;
 
-  
- storeById(){
+  @Get("/id")
+  storeById(@Query('id') id: string){
+      return this.storeService.storeById(id);
+  } // retorne store específico por id, response 1;
 
- } // retorne store específico por id, response 1;
- storeByState(){
+ @Get("/storeByState")
+ storeByState( @Query('limit') limit: string, @Query('offset') offset: string, @Query('uf') uf: string){
 
+    return this.storeService.storeByState(uf, parseInt(limit), parseInt(offset))
+   
  } 
 
 }

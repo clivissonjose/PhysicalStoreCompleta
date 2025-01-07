@@ -35,6 +35,7 @@
     "physical-store-completa": "file:",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "soap": "^1.1.7",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20"
   },
