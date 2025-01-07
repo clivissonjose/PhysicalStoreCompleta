@@ -4,7 +4,6 @@ import { Model } from 'mongoose';
 import { Store } from './store.schema';
 import { CreateStoreDTO } from './dto/createStore.dto';
 import axios from 'axios';
-import * as soap from 'soap';
 
 @Injectable()
 export class StoreService {
@@ -21,6 +20,7 @@ export class StoreService {
 
       const coordinates = this.searchCoordinates(cep);
       // Retorna o endereço completo
+      createStoreDto.storeName = 'Renner'
       createStoreDto.address1 = data.logradouro
       createStoreDto.city = data.localidade
       createStoreDto.district = data.bairro
@@ -67,8 +67,8 @@ export class StoreService {
     );
     
 
-    // Se não tiver o tipo especifico de loja, será mostrado todas as lojas
-   
+    // Se não tiver o tipo da loja, será mostrado todas as stores (PDV OU LOJA)
+    
     if(!type){
        
        return {
@@ -88,7 +88,8 @@ export class StoreService {
         city: store.city,
         postalCode: store.postalCode,
         type: store.type,
-        distance:  `${store.distance.toFixed(1)}`, // Distância formatada
+        distance:  `${store.distance.toFixed(1)} km`, // Distância formatada
+        
         value: [
           {
             prazo: "1 dias úteis",
@@ -108,36 +109,59 @@ export class StoreService {
     }
 
     if(type === 'LOJA'){
+
       const storesLOJA = await Promise.all(storesWithDistance.filter((store)=>
         store.type === 'LOJA')
         .map( async (store) => {
-  
-        return {
-          name: store.storeName,
-          city: store.city,
-          postalCode: store.postalCode,
-          type: store.type,
-          distance:  `${store.distance.toFixed(1)}`, // Distância formatada
-          value: [
-          
-              {
-                 prazo: 736,
-                 codProdutoAgencia: "04014",
-                 price: "R$ 27,00",
-                 description: "Sedex a encomenda expressa dos Correios"
-     
-              },
-              {
-                  "prazo": "6 dias úteis",
-                  "codProdutoAgencia": "04510",
-                  "price": "R$ 25,50",
-                  "description": "PAC a encomenda economica dos Correios"
-              }
-          
-          ]
-        }
+          const cepDestinoLimpo = store.postalCode.replace('-', '');
+         
+         const frete = await this.calcularFrete(cep, cepDestinoLimpo);
+    
+        if(store.distance > 50) {
+            return {
+              name: store.storeName,
+              city: store.city,
+              postalCode: store.postalCode,
+              type: store.type,
+              distance:  `${store.distance.toFixed(1)} km`, 
+              value: [
+              
+                  {
+                    prazo: frete[0].prazo,
+                    codProdutoAgencia: frete[0].codProdutoAgencia,
+                    price: frete[0].precoAgencia,
+                    description: "Sedex a encomenda expressa dos Correios"
+        
+                  },
+                  {
+                      prazo: frete[1].prazo,
+                      codProdutoAgencia: frete[1].codProdutoAgencia,
+                      price: frete[1].precoAgencia,
+                      description: "PAC a encomenda economica dos Correios"
+                  }
+              
+              ]
+            }
+         }else{
+          return{
+            name: store.storeName,
+            city: store.city,
+            postalCode: store.postalCode,
+            type: store.type,
+            distance:  `${store.distance.toFixed(1)} km`, // Distância formatada
+        
+           value: [
+            {
+              prazo: "1 dias úteis",
+              price: "R$ 15,00",
+              description: "Motoboy",
+            },
+           ] 
+         }
+         }
       }))
 
+      storesLOJA.sort((a,b) => parseInt(a.distance) - parseInt(b.distance));
       return{
         stores: storesLOJA,
         limit,
@@ -149,12 +173,12 @@ export class StoreService {
 
 
  storeById(id: any){
-   const storeById =  this.storeModel.findById(id);
+   const stores =  this.storeModel.findById(id);
 
-   return storeById;
+   return stores
  } // retorne store específico por id, response 1;
  
- async storeByState(uf:string, limit: number, offset: number){
+ async storeByState(limit: number, offset: number){
       //console.log("Limit: ", parseInt(limit), "offset", offset)
 
       const stores = await this.storeModel.aggregate([
@@ -170,10 +194,10 @@ export class StoreService {
           $sort: { _id: 1 }, // Ordena em ordem alfabeica
         },
         {
-          $skip: offset, // Pula o número de documentos especificado no offset
+          $skip: offset, // Pula o número de lojas
         },
         {
-          $limit: limit, // Limita o número de documentos retornados
+          $limit: limit, // Limita o número de lojas que será retornado
         },
         {
           $project: {
@@ -193,6 +217,10 @@ export class StoreService {
       };
  }
 
+
+ // Funções auxiliares
+
+   // Funcao para calcular distancia entre duas localidades
  private radianos(graus:number){
   return graus * (Math.PI / 180);
  }
@@ -208,23 +236,24 @@ export class StoreService {
 
   // Fórmula de harvesine para  calcular distancias
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) + // Componente de latitude
-    Math.cos(this.radianos(lat)) * Math.cos(this.radianos(latStore)) * // Ajuste para diferenças de longitude e latitude
-    Math.sin(dLon / 2) * Math.sin(dLon / 2); // Componente de longitude
-
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) + 
+    Math.cos(this.radianos(lat)) * Math.cos(this.radianos(latStore)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2); 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  const distancia = R * c; // Resultado em quilômetros
+  const distancia = R * c; // Resultado em qquilometros
   return distancia;
  }
 
+
+ // Funcao para encontrar coordenadas
  private async searchCoordinates(cep : string){
 
   const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
     params: {
       address: `${cep}, Brazil`,
       key: 'AIzaSyCkgYheq_hsuBgi2RISBZHprvquFiwe9pk',
-      // parâmetro aleatório para evitar o cache
+     
       random: Math.random()
     }
   });
@@ -243,5 +272,36 @@ export class StoreService {
   };
  }
 
+
+ private async calcularFrete(cepOrigem: string, cepDestino: string){
+     
+  let data = JSON.stringify({
+    cepOrigem,
+    cepDestino,
+    "comprimento": "20",
+    "largura": "15",
+    "altura": "10"
+  });
+  
+  let config = {
+    method: 'post',
+    maxBodyLength: Infinity,
+    url: 'https://www.correios.com.br/@@precosEPrazosView',
+    headers: { 
+      'Content-Type': 'application/json', 
+      'Cookie': 'LBprdExt2=852033546.47873.0000; LBprdint2=3074031626.47873.0000; TS01a7fccb=01ff9e5fc64fd38a5b2e50a2ae3a570ef11d7b9449096c5247fb9319b4c45f9e32e3efda46b82068af62752a57017007cc253c024822dff0b9b9460ba987098591ab9710f6df38a05c6b4bfe42834161daf1fad8d3'
+    },
+    data : data
+  };
+  
+  try {
+    const response = await axios.request(config);
+    return response.data; 
+  } catch (error) {
+    console.error('Erro ao calcular o frete:', error.message);
+    throw new Error('Erro ao calcular o frete'); 
+  }
+  
+ }
 
 }

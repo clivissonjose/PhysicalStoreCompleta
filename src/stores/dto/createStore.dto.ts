@@ -3,13 +3,8 @@ import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional } from "class-val
 
 export class CreateStoreDTO{
 
-  @IsString()
-  @IsNotEmpty()
-  readonly storeID: string; // ID único da loja
 
-  @IsString()
-  @IsNotEmpty()
-  readonly storeName: string; // Nome da loja
+  storeName: string; // Nome da loja
 
   @IsBoolean()
   @IsNotEmpty()
