@@ -1,18 +1,18 @@
-import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional } from "class-validator";
+import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional, isString } from "class-validator";
 
 
 export class CreateStoreDTO{
 
 
-  storeName: string; // Nome da loja
+  storeName: string; 
 
   @IsBoolean()
   @IsNotEmpty()
-  readonly takeOutInStore: boolean; // Produto disponível para retirada na loja
+  readonly takeOutInStore: boolean; 
 
   @IsNumber()
   @IsNotEmpty()
-  readonly shippingTimeInDays: number; // Tempo de envio/preparo em dias
+  readonly shippingTimeInDays: number; 
 
   latitude: string; // Latitude da localização
 
@@ -35,6 +35,8 @@ export class CreateStoreDTO{
   @IsNotEmpty()
   readonly type: string; // Tipo da loja (PDV ou LOJA)
 
+  @IsString()
+  @IsNotEmpty()
   country: string; // País
 
   @IsString()
