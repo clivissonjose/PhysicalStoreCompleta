@@ -1,8 +1,7 @@
 import { Schema, Document } from 'mongoose';
 
-// Criando a classe Store, que agora será o modelo Mongoose
+// Criando a classe Store
 export class Store extends Document {
-  storeID: string;
   storeName: string;
   takeOutInStore: boolean;
   shippingTimeInDays: number;
@@ -23,7 +22,6 @@ export class Store extends Document {
 
 // Definindo o schema Mongoose com o tipo da classe Store
 export const StoreSchema = new Schema<Store>({
-  storeID: { type: String, required: true },
   storeName: { type: String, required: true },
   takeOutInStore: { type: Boolean, required: true },
   shippingTimeInDays: { type: Number, required: true },

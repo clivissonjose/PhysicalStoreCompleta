@@ -1,55 +1,35 @@
-import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional } from "class-validator";
+import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional, isString } from "class-validator";
 
 
 export class CreateStoreDTO{
 
-  @IsString()
-  @IsNotEmpty()
-  readonly storeID: string; // ID único da loja
 
-  @IsString()
-  @IsNotEmpty()
-  readonly storeName: string; // Nome da loja
+  storeName: string; 
 
   @IsBoolean()
   @IsNotEmpty()
-  readonly takeOutInStore: boolean; // Produto disponível para retirada na loja
+  readonly takeOutInStore: boolean; 
 
   @IsNumber()
   @IsNotEmpty()
-  readonly shippingTimeInDays: number; // Tempo de envio/preparo em dias
+  readonly shippingTimeInDays: number; 
 
-  @IsString()
-  @IsNotEmpty()
-  readonly latitude: string; // Latitude da localização
+  latitude: string; // Latitude da localização
 
-  @IsString()
-  @IsNotEmpty()
-  readonly longitude: string; // Longitude da localização
+ longitude: string; // Longitude da localização
 
-  @IsString()
-  @IsNotEmpty()
-  readonly address1: string; // Endereço principal
+  address1: string; // Endereço principal
 
-  @IsString()
-  @IsOptional()
-  readonly address2?: string; // Endereço secundário (opcional)
+  address2?: string; // Endereço secundário (opcional)
 
-  @IsString()
-  @IsOptional()
-  readonly address3?: string; // Endereço terciário (opcional)
+  address3?: string; // Endereço terciário (opcional)
 
-  @IsString()
-  @IsNotEmpty()
-  readonly city: string; // Cidade
+  city: string; // Cidade
 
-  @IsString()
-  @IsNotEmpty()
-  readonly district: string; // Distrito/Bairro
 
-  @IsString()
-  @IsNotEmpty()
-  readonly state: string; // Estado
+  district: string; // Distrito/Bairro
+
+  state: string; // Estado
 
   @IsString()
   @IsNotEmpty()
@@ -57,7 +37,7 @@ export class CreateStoreDTO{
 
   @IsString()
   @IsNotEmpty()
-  readonly country: string; // País
+  country: string; // País
 
   @IsString()
   @IsNotEmpty()
