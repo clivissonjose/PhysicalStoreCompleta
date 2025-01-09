@@ -51,7 +51,7 @@ export class StoreService {
     };
   } // retorne as stores da base, response 1;
 
-  async storeByCep(cep: string, type: string, limit: number, offset: number) {
+  async storeByCep(cep: string, limit: number, offset: number) {
     const stores = await this.storeModel.find();
 
     const coordinates = await this.calculateCoordinates.searchCoordinates(cep);
@@ -73,106 +73,87 @@ export class StoreService {
       (a, b) => a.distance - b.distance,
     );
 
-    // Se não tiver o tipo da loja, será mostrado todas as stores (PDV OU LOJA)
+    const storesPDV = sortedStores
+      .filter((store) => store.type === 'PDV' && store.distance <= 50)
+      .map((store) => ({
+        name: store.storeName,
+        city: store.city,
+        postalCode: store.postalCode,
+        type: store.type,
+        distance: `${store.distance.toFixed(1)} km`,
+        value: [
+          {
+            prazo: '1 dias úteis',
+            price: 'R$ 15,00',
+            description: 'Motoboy',
+          },
+        ],
+      }));
 
-    if (!type) {
-      const paginatedStores = sortedStores.slice(offset, offset + limit);
-      return {
-        stores: paginatedStores,
-        limit,
-        offset,
-        total: paginatedStores.length,
-      };
-    }
+    
+    const storesLOJA = await Promise.all(
+      sortedStores
+        .filter((store) => store.type === 'LOJA')
+        .map(async (store) => {
+          
+          if (store.distance > 50) {
 
-    if (type === 'PDV') {
-      const storesPDV = storesWithDistance
-        .filter((store) => store.type === 'PDV' && store.distance <= 50)
-        .map((store) => ({
-          name: store.storeName,
-          city: store.city,
-          postalCode: store.postalCode,
-          type: store.type,
-          distance: `${store.distance.toFixed(1)} km`, // Distância formatada
-
-          value: [
-            {
-              prazo: '1 dias úteis',
-              price: 'R$ 15,00',
-              description: 'Motoboy',
-            },
-          ],
-        }));
-
-      return {
-        stores: storesPDV.slice(offset, offset + limit),
-        limit,
-        offset,
-        total: storesPDV.length,
-      };
-    }
-
-    if (type === 'LOJA') {
-      const storesLOJA = await Promise.all(
-        storesWithDistance
-          .filter((store) => store.type === 'LOJA')
-          .map(async (store) => {
             const cepDestinoLimpo = store.postalCode.replace('-', '');
+            const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
 
-            const frete = await this.calculateFrete.calcularFrete(
-              cep,
-              cepDestinoLimpo,
-            );
+            return {
+              name: store.storeName,
+              city: store.city,
+              postalCode: store.postalCode,
+              type: store.type,
+              distance: `${store.distance.toFixed(1)} km`,
+              value: [
+                {
+                  prazo: frete[0].prazo,
+                  codProdutoAgencia: frete[0].codProdutoAgencia,
+                  price: frete[0].precoAgencia,
+                  description: 'Sedex a encomenda expressa dos Correios',
+                },
+                {
+                  prazo: frete[1].prazo,
+                  codProdutoAgencia: frete[1].codProdutoAgencia,
+                  price: frete[1].precoAgencia,
+                  description: 'PAC a encomenda econômica dos Correios',
+                },
+              ],
+            };
+          } else {
+            return {
+              name: store.storeName,
+              city: store.city,
+              postalCode: store.postalCode,
+              type: store.type,
+              distance: `${store.distance.toFixed(1)} km`,
+              value: [
+                {
+                  prazo: '1 dias úteis',
+                  price: 'R$ 15,00',
+                  description: 'Motoboy',
+                },
+              ],
+            };
+          }
+        }),
+    );
 
-            if (store.distance > 50) {
-              return {
-                name: store.storeName,
-                city: store.city,
-                postalCode: store.postalCode,
-                type: store.type,
-                distance: `${store.distance.toFixed(1)} km`,
-                value: [
-                  {
-                    prazo: frete[0].prazo,
-                    codProdutoAgencia: frete[0].codProdutoAgencia,
-                    price: frete[0].precoAgencia,
-                    description: 'Sedex a encomenda expressa dos Correios',
-                  },
-                  {
-                    prazo: frete[1].prazo,
-                    codProdutoAgencia: frete[1].codProdutoAgencia,
-                    price: frete[1].precoAgencia,
-                    description: 'PAC a encomenda economica dos Correios',
-                  },
-                ],
-              };
-            } else {
-              return {
-                name: store.storeName,
-                city: store.city,
-                postalCode: store.postalCode,
-                type: store.type,
-                distance: `${store.distance.toFixed(1)} km`, // Distância formatada
+    const allStores = [...storesPDV, ...storesLOJA];
+  
+    allStores.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+    const paginatedStores = allStores.slice(offset, offset + limit);
 
-                value: [
-                  {
-                    prazo: '1 dias úteis',
-                    price: 'R$ 15,00',
-                    description: 'Motoboy',
-                  },
-                ],
-              };
-            }
-          }),
-      );
-
-      return {
-        stores: storesLOJA.slice(offset, offset + limit),
-        limit,
-        offset,
-        total: storesLOJA.length,
-      };
-    }
+    console.log("LOjas: ", paginatedStores)
+    return {
+      stores: paginatedStores,
+      limit,
+      offset,
+      total: paginatedStores.length,
+    };
+    
   } //retorna stores que sejam próximos ou PDV, response 2;
 
   storeById(id: any) {

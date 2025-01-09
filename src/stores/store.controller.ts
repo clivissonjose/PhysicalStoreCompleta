@@ -24,11 +24,10 @@ export class StoreController {
   @Get('/storeByCep/:cep')
   storeByCep(
     @Param('cep') cep: string,
-    @Query('type') type: string,
     @Query('limit') limit: string,
     @Query('offset') offset: string,
   ) {
-    return this.storeService.storeByCep(cep, type, parseInt(limit), parseInt(offset));
+    return this.storeService.storeByCep(cep, parseInt(limit), parseInt(offset));
   } //retorna stores que sejam próximos ou PDV, response 2;
 
   @Get('/id')
