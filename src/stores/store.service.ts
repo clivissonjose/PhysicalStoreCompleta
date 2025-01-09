@@ -3,11 +3,18 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Store } from './store.schema';
 import { CreateStoreDTO } from './dto/createStore.dto';
-import axios from 'axios';
+import { CalculateCoordinates } from 'src/stores/services/calculate-coordenates';
+import { CalculateFrete } from 'src/stores/services/calculate-frete';
+import { CalculateDistances } from 'src/stores/services/calculate-distances';
 
 @Injectable()
 export class StoreService {
-  constructor(@InjectModel('Store') private storeModel: Model<Store>) {}
+  constructor(
+    @InjectModel('Store') private storeModel: Model<Store>,
+    private calculateCoordinates: CalculateCoordinates,
+    private calculateFrete: CalculateFrete,
+    private calculateDistances: CalculateDistances,
+  ) {}
 
   async createStore(createStoreDto: CreateStoreDTO, cep: string) {
     const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
@@ -17,7 +24,7 @@ export class StoreService {
       throw new Error('CEP não encontrado');
     }
 
-    const coordinates = this.searchCoordinates(cep);
+    const coordinates = this.calculateCoordinates.searchCoordinates(cep);
     // Retorna o endereço completo
     createStoreDto.storeName = 'Renner';
     createStoreDto.address1 = data.logradouro;
@@ -32,8 +39,8 @@ export class StoreService {
   }
 
   async listAll(limit: number, offset: number) {
-    const stores = await this.storeModel.find().limit(limit).skip(offset)
-  
+    const stores = await this.storeModel.find().skip(offset).limit(limit);
+
     const total = stores.length;
 
     return {
@@ -45,26 +52,26 @@ export class StoreService {
   } // retorne as stores da base, response 1;
 
   async storeByCep(cep: string, type: string, limit: number, offset: number) {
-    
     const stores = await this.storeModel.find();
 
-    const coordinates = await this.searchCoordinates(cep);
+    const coordinates = await this.calculateCoordinates.searchCoordinates(cep);
 
     // Calcular distâncias
     const storesWithDistance = await Promise.all(
-        stores.map(async (store) => {
-            const distance = await this.calculateDistances(
-                parseFloat(coordinates.latitude),
-                parseFloat(coordinates.longitude),
-                parseFloat(store.latitude),
-                parseFloat(store.longitude),
-            );
-            return { ...store.toObject(), distance };
-        }),
-      )
+      stores.map(async (store) => {
+        const distance = await this.calculateDistances.calculateDistances(
+          parseFloat(coordinates.latitude),
+          parseFloat(coordinates.longitude),
+          parseFloat(store.latitude),
+          parseFloat(store.longitude),
+        );
+        return { ...store.toObject(), distance };
+      }),
+    );
 
-      const sortedStores = storesWithDistance.sort((a, b) => a.distance - b.distance);
-
+    const sortedStores = storesWithDistance.sort(
+      (a, b) => a.distance - b.distance,
+    );
 
     // Se não tiver o tipo da loja, será mostrado todas as stores (PDV OU LOJA)
 
@@ -80,9 +87,7 @@ export class StoreService {
 
     if (type === 'PDV') {
       const storesPDV = storesWithDistance
-        .filter((store) => 
-           store.type === 'PDV' && store.distance <= 50
-        )
+        .filter((store) => store.type === 'PDV' && store.distance <= 50)
         .map((store) => ({
           name: store.storeName,
           city: store.city,
@@ -100,7 +105,7 @@ export class StoreService {
         }));
 
       return {
-        stores: storesPDV.slice(offset, offset+limit),
+        stores: storesPDV.slice(offset, offset + limit),
         limit,
         offset,
         total: storesPDV.length,
@@ -114,7 +119,10 @@ export class StoreService {
           .map(async (store) => {
             const cepDestinoLimpo = store.postalCode.replace('-', '');
 
-            const frete = await this.calcularFrete(cep, cepDestinoLimpo);
+            const frete = await this.calculateFrete.calcularFrete(
+              cep,
+              cepDestinoLimpo,
+            );
 
             if (store.distance > 50) {
               return {
@@ -158,9 +166,8 @@ export class StoreService {
           }),
       );
 
-      
       return {
-        stores: storesLOJA.slice(offset, offset+limit),
+        stores: storesLOJA.slice(offset, offset + limit),
         limit,
         offset,
         total: storesLOJA.length,
@@ -211,96 +218,4 @@ export class StoreService {
       total: stores.length,
     };
   }
-
-  // Funções auxiliares
-
-  // Funcao para calcular distancia entre duas localidades
-  private radianos(graus: number) {
-    return graus * (Math.PI / 180);
-  }
-
-   async calculateDistances(
-    lat: number,
-    log: number,
-    latStore: number,
-    logStore: number,
-  ) {
-    const R = 6371; // Raio da Terra em km
-
-    // Diferenças entre as latitudes de longitudes
-    const dLat = this.radianos(latStore - lat);
-    const dLon = this.radianos(logStore - log);
-
-    // Fórmula de harvesine para  calcular distancias
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.radianos(lat)) *
-        Math.cos(this.radianos(latStore)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    const distancia = R * c; // Resultado em qquilometros
-    return distancia;
-  }
-
-  // Funcao para encontrar coordenadas
-   async searchCoordinates(cep: string) {
-    const response = await axios.get(
-      'https://maps.googleapis.com/maps/api/geocode/json',
-      {
-        params: {
-          address: `${cep}, Brazil`,
-          key: 'AIzaSyCkgYheq_hsuBgi2RISBZHprvquFiwe9pk',
-
-          random: Math.random(),
-        },
-      },
-    );
-
-    const data = response.data;
-
-    // Verificar se tudo está ok
-    if (data.status !== 'OK' || data.results.length === 0) {
-      console.error('CEP não encontrado ou erro na requisição:', data.status);
-      return null;
-    }
-
-    return {
-      latitude: data.results[0].geometry.location.lat,
-      longitude: data.results[0].geometry.location.lng,
-    };
-  }
-
-   async calcularFrete(cepOrigem: string, cepDestino: string) {
-    let data = JSON.stringify({
-      cepOrigem,
-      cepDestino,
-      comprimento: '20',
-      largura: '15',
-      altura: '10',
-    });
-
-    let config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: 'https://www.correios.com.br/@@precosEPrazosView',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie:
-          'LBprdExt2=852033546.47873.0000; LBprdint2=3074031626.47873.0000; TS01a7fccb=01ff9e5fc64fd38a5b2e50a2ae3a570ef11d7b9449096c5247fb9319b4c45f9e32e3efda46b82068af62752a57017007cc253c024822dff0b9b9460ba987098591ab9710f6df38a05c6b4bfe42834161daf1fad8d3',
-      },
-      data: data,
-    };
-
-    try {
-      const response = await axios.request(config);
-      return response.data;
-    } catch (error) {
-      console.error('Erro ao calcular o frete:', error.message);
-      throw new Error('Erro ao calcular o frete');
-    }
-  }
-
-
 }
