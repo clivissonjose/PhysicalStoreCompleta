@@ -146,9 +146,15 @@ export class StoreService {
     allStores.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
     const paginatedStores = allStores.slice(offset, offset + limit);
 
-    console.log("LOjas: ", paginatedStores)
     return {
       stores: paginatedStores,
+      pins: {
+        position: {
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+        },
+        title: "Renner"
+      },
       limit,
       offset,
       total: paginatedStores.length,
@@ -159,39 +165,20 @@ export class StoreService {
   storeById(id: any) {
     const stores = this.storeModel.findById(id);
 
-    return stores;
+    return {
+      stores,
+      // Como é só uma loja isso aqui será o padrão:
+      limit: 1,
+      offset: 0,
+      total: 1
+    }
   } // retorne store específico por id, response 1;
 
-  async storeByState(limit: number, offset: number) {
-    //console.log("Limit: ", parseInt(limit), "offset", offset)
+  async storeByState(uf: string, limit: number, offset: number) {
+    
+    const stores = await this.storeModel.find({state: uf}).limit(limit).skip(offset);;
 
-    const stores = await this.storeModel.aggregate([
-      {
-        $group: {
-          _id: '$state', // Agrupa por estado
-          stores: { $push: '$$ROOT' }, // Adiciona todas as lojas do grupo
-          totalStores: { $sum: 1 }, // Conta o número de lojas em cada estado
-        },
-      },
-      {
-        $sort: { _id: 1 }, // Ordena em ordem alfabeica
-      },
-      {
-        $skip: offset, // Pula o número de lojas
-      },
-      {
-        $limit: limit, // Limita o número de lojas que será retornado
-      },
-      {
-        $project: {
-          _id: 0, // Remove o campo `_id` do resultado
-          state: '$_id', // Renomeia `_id` para `state`
-          stores: 1, // Inclui as lojas no resultado
-          totalStores: 1, // Inclui a contagem total de lojas no resultado
-        },
-      },
-    ]);
-
+    
     return {
       stores,
       limit,

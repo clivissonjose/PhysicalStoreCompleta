@@ -35,9 +35,10 @@ export class StoreController {
     return this.storeService.storeById(id);
   } // retorne store específico por id, response 1;
 
-  @Get('/storeByState')
-  storeByState(@Query('limit') limit: string, @Query('offset') offset: string) {
-    return this.storeService.storeByState(parseInt(limit), parseInt(offset));
+
+  @Get('/:uf')
+  storeByState(@Param('uf') uf: string, @Query('limit') limit: string, @Query('offset') offset: string) {
+    return this.storeService.storeByState(uf, parseInt(limit), parseInt(offset));
   }
 
 }
