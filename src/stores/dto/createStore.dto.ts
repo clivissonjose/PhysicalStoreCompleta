@@ -1,6 +1,5 @@
 import { IsString, IsNotEmpty, IsBoolean, IsNumber, IsOptional, isString } from "class-validator";
 
-
 export class CreateStoreDTO{
 
 
@@ -16,7 +15,7 @@ export class CreateStoreDTO{
 
   latitude: string; // Latitude da localização
 
- longitude: string; // Longitude da localização
+  longitude: string; // Longitude da localização
 
   address1: string; // Endereço principal
 
