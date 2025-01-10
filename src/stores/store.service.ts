@@ -6,6 +6,8 @@ import { CreateStoreDTO } from './dto/createStore.dto';
 import { CalculateCoordinates } from 'src/stores/services/calculate-coordenates';
 import { CalculateFrete } from 'src/stores/services/calculate-frete';
 import { CalculateDistances } from 'src/stores/services/calculate-distances';
+import { Types } from 'mongoose';
+
 
 @Injectable()
 export class StoreService {
@@ -162,16 +164,25 @@ export class StoreService {
     
   } //retorna stores que sejam próximos ou PDV, response 2;
 
-  storeById(id: any) {
-    const stores = this.storeModel.findById(id);
+  async storeById(id: any) {
+    
+      // Conversão para ObjectId e busca no banco
 
-    return {
-      stores,
-      // Como é só uma loja isso aqui será o padrão:
-      limit: 1,
-      offset: 0,
-      total: 1
-    }
+      if (!Types.ObjectId.isValid(id)) {
+        throw new Error('Invalid ID format');
+      }
+      const store = await this.storeModel.findOne({ _id: new Types.ObjectId(id) })
+      if (!store) {
+        throw new Error(`Store with ID ${id} not found`);
+      }
+  
+      return {
+        store,
+        limit: 1,
+        offset: 0,
+        total: 1,
+      };
+   
   } // retorne store específico por id, response 1;
 
   async storeByState(uf: string, limit: number, offset: number) {
