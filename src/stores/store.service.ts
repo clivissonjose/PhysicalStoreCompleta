@@ -67,86 +67,21 @@ export class StoreService {
           parseFloat(store.latitude),
           parseFloat(store.longitude),
         );
-        return { ...store.toObject(), distance };
+
+        if(distance <= 50){
+          return this.formatStore(store, distance);
+        }else{
+          const cepDestinoLimpo = store.postalCode.replace('-', '');
+          const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
+  
+          return this.formatStore(store, distance, frete);
+        }
       }),
     );
-
-    const sortedStores = storesWithDistance.sort(
-      (a, b) => a.distance - b.distance,
-    );
-
-    const storesPDV = sortedStores
-      .filter((store) => store.type === 'PDV' && store.distance <= 50)
-      .map((store) => ({
-        name: store.storeName,
-        city: store.city,
-        postalCode: store.postalCode,
-        type: store.type,
-        distance: `${store.distance.toFixed(1)} km`,
-        value: [
-          {
-            prazo: '1 dias úteis',
-            price: 'R$ 15,00',
-            description: 'Motoboy',
-          },
-        ],
-      }));
-
-    
-    const storesLOJA = await Promise.all(
-      sortedStores
-        .filter((store) => store.type === 'LOJA')
-        .map(async (store) => {
-          
-          if (store.distance > 50) {
-
-            const cepDestinoLimpo = store.postalCode.replace('-', '');
-            const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
-
-            return {
-              name: store.storeName,
-              city: store.city,
-              postalCode: store.postalCode,
-              type: store.type,
-              distance: `${store.distance.toFixed(1)} km`,
-              value: [
-                {
-                  prazo: frete[0].prazo,
-                  codProdutoAgencia: frete[0].codProdutoAgencia,
-                  price: frete[0].precoAgencia,
-                  description: 'Sedex a encomenda expressa dos Correios',
-                },
-                {
-                  prazo: frete[1].prazo,
-                  codProdutoAgencia: frete[1].codProdutoAgencia,
-                  price: frete[1].precoAgencia,
-                  description: 'PAC a encomenda econômica dos Correios',
-                },
-              ],
-            };
-          } else {
-            return {
-              name: store.storeName,
-              city: store.city,
-              postalCode: store.postalCode,
-              type: store.type,
-              distance: `${store.distance.toFixed(1)} km`,
-              value: [
-                {
-                  prazo: '1 dias úteis',
-                  price: 'R$ 15,00',
-                  description: 'Motoboy',
-                },
-              ],
-            };
-          }
-        }),
-    );
-
-    const allStores = [...storesPDV, ...storesLOJA];
   
-    allStores.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-    const paginatedStores = allStores.slice(offset, offset + limit);
+    const filteredStores = storesWithDistance.filter((store) => store !== null);
+    const sortedStores = filteredStores.sort((a,b) => parseInt(a.distance) -  parseInt(b.distance));
+    const paginatedStores = sortedStores.slice(offset, offset + limit);
 
     return {
       stores: paginatedStores,
@@ -189,7 +124,6 @@ export class StoreService {
     
     const stores = await this.storeModel.find({state: uf}).limit(limit).skip(offset);;
 
-    
     return {
       stores,
       limit,
@@ -197,4 +131,51 @@ export class StoreService {
       total: stores.length,
     };
   }
+
+
+  // Função auxiliar para formatar Stores
+  private formatStore(store: any, distance: number, frete?: any) {
+    if ( distance <= 50 ) {
+      return {
+        name: store.storeName,
+        city: store.city,
+        postalCode: store.postalCode,
+        type: store.type,
+        distance: `${distance.toFixed(1)} km`,
+        value: [
+          {
+            prazo: '1 dias úteis',
+            price: 'R$ 15,00',
+            description: 'Motoboy',
+          },
+        ],
+      };
+    }
+  
+    // LOjas estarão > 50 e to tipo loja
+    if (store.type === 'LOJA') {
+      return {
+        name: store.storeName,
+        city: store.city,
+        postalCode: store.postalCode,
+        type: store.type,
+        distance: `${distance.toFixed(1)} km`,
+        value: [
+          {
+            prazo: frete[0].prazo,
+            price: frete[0].precoAgencia,
+            description: 'Sedex a encomenda expressa dos Correios',
+          },
+          {
+            prazo: frete[1].prazo,
+            price: frete[1].precoAgencia,
+            description: 'PAC a encomenda econômica dos Correios',
+          },
+        ],
+      };
+    }
+  
+    return null;
+  }
+  
 }
