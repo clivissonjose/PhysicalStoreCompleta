@@ -6,6 +6,7 @@ import { CreateStoreDTO } from './dto/createStore.dto';
 import { CalculateCoordinates } from 'src/stores/services/calculate-coordenates';
 import { CalculateFrete } from 'src/stores/services/calculate-frete';
 import { CalculateDistances } from 'src/stores/services/calculate-distances';
+import { FormatSores } from './services/format-store';
 import { Types } from 'mongoose';
 
 
@@ -16,6 +17,7 @@ export class StoreService {
     private calculateCoordinates: CalculateCoordinates,
     private calculateFrete: CalculateFrete,
     private calculateDistances: CalculateDistances,
+    private formatStore1: FormatSores
   ) {}
 
   async createStore(createStoreDto: CreateStoreDTO, cep: string) {
@@ -69,18 +71,18 @@ export class StoreService {
         );
 
         if(distance <= 50){
-          return this.formatStore(store, distance);
+          return this.formatStore1.formatStore(store, distance);
         }else{
           const cepDestinoLimpo = store.postalCode.replace('-', '');
           const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
   
-          return this.formatStore(store, distance, frete);
+          return this.formatStore1.formatStore(store, distance, frete);
         }
       }),
     );
   
-    const filteredStores = storesWithDistance.filter((store) => store !== null);
-    const sortedStores = filteredStores.sort((a,b) => parseInt(a.distance) -  parseInt(b.distance));
+    const storesNotNull = storesWithDistance.filter((store) => store !== null);
+    const sortedStores = storesNotNull.sort((a,b) => parseInt(a.distance) -  parseInt(b.distance));
     const paginatedStores = sortedStores.slice(offset, offset + limit);
 
     return {
@@ -132,50 +134,4 @@ export class StoreService {
     };
   }
 
-
-  // Função auxiliar para formatar Stores
-  private formatStore(store: any, distance: number, frete?: any) {
-    if ( distance <= 50 ) {
-      return {
-        name: store.storeName,
-        city: store.city,
-        postalCode: store.postalCode,
-        type: store.type,
-        distance: `${distance.toFixed(1)} km`,
-        value: [
-          {
-            prazo: '1 dias úteis',
-            price: 'R$ 15,00',
-            description: 'Motoboy',
-          },
-        ],
-      };
-    }
-  
-    // LOjas estarão > 50 e to tipo loja
-    if (store.type === 'LOJA') {
-      return {
-        name: store.storeName,
-        city: store.city,
-        postalCode: store.postalCode,
-        type: store.type,
-        distance: `${distance.toFixed(1)} km`,
-        value: [
-          {
-            prazo: frete[0].prazo,
-            price: frete[0].precoAgencia,
-            description: 'Sedex a encomenda expressa dos Correios',
-          },
-          {
-            prazo: frete[1].prazo,
-            price: frete[1].precoAgencia,
-            description: 'PAC a encomenda econômica dos Correios',
-          },
-        ],
-      };
-    }
-  
-    return null;
-  }
-  
 }

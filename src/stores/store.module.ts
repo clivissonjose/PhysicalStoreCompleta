@@ -7,6 +7,7 @@ import { Store, StoreSchema } from './store.schema';
 import { CalculateCoordinates } from 'src/stores/services/calculate-coordenates';
 import { CalculateFrete } from 'src/stores/services/calculate-frete';
 import { CalculateDistances } from 'src/stores/services/calculate-distances';
+import { FormatSores } from './services/format-store';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CalculateDistances } from 'src/stores/services/calculate-distances';
     CalculateDistances,
     CalculateFrete,
     CalculateCoordinates,
+    FormatSores
   ],
 })
 export class StoreModule {}

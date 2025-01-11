@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Query, Param } from '@nestjs/common';
 import { CreateStoreDTO } from './dto/createStore.dto';
 import { StoreService } from './store.service';
-import { ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody} from '@nestjs/swagger';
 
 
 @ApiTags('store')
@@ -10,6 +10,7 @@ export class StoreController {
   constructor(private storeService: StoreService) {}
 
   @ApiOperation({ summary: 'Criar uma Loja ou PDV' }) // Descrição da operação
+  @ApiBody({ description: 'Dados necessários para criar uma loja ou PDV',type: CreateStoreDTO,})
   @Post('/createStore')
   createStore(@Body() body: CreateStoreDTO) {
     return this.storeService.createStore(body, body.postalCode);
@@ -30,8 +31,8 @@ export class StoreController {
     return this.storeService.storeByCep(cep, parseInt(limit), parseInt(offset));
   } //retorna stores que sejam próximos ou PDV, response 2;
 
-  @Get('/id')
-  storeById(@Query('id') id: string) {
+  @Get('/:id')
+  storeById(@Param('id') id: string) {
     return this.storeService.storeById(id);
   } // retorne store específico por id, response 1;
 
