@@ -21,7 +21,7 @@ export class FormatSores{
       };
     }
   
-    // LOjas estarão > 50 e to tipo loja
+    // Stores estarão com distancia > 50 e do tipo loja
     if (store.type === 'LOJA') {
       return {
         name: store.storeName,
@@ -33,7 +33,7 @@ export class FormatSores{
           {
             prazo: frete[0].prazo,
             price: frete[0].precoAgencia,
-            description: frete[0].urlTitulo,
+            description: frete[0].url,
           },
           {
             prazo: frete[1].prazo,

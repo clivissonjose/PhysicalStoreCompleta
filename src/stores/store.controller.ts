@@ -28,6 +28,7 @@ export class StoreController {
     @Query('limit') limit: string,
     @Query('offset') offset: string,
   ) {
+    
     return this.storeService.storeByCep(cep, parseInt(limit), parseInt(offset));
   } //retorna stores que sejam próximos ou PDV, response 2;
 
@@ -37,7 +38,7 @@ export class StoreController {
   } // retorne store específico por id, response 1;
 
 
-  @Get('/:uf')
+  @Get('/storesByState/:uf')
   storeByState(@Param('uf') uf: string, @Query('limit') limit: string, @Query('offset') offset: string) {
     return this.storeService.storeByState(uf, parseInt(limit), parseInt(offset));
   }
