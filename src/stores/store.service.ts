@@ -6,6 +6,7 @@ import { CreateStoreDTO } from './dto/createStore.dto';
 import { CalculateCoordinates } from 'src/stores/services/calculate-coordenates';
 import { CalculateFrete } from 'src/stores/services/calculate-frete';
 import { CalculateDistances } from 'src/stores/services/calculate-distances';
+import { FormatSores } from './services/format-store';
 import { Types } from 'mongoose';
 
 
@@ -16,6 +17,7 @@ export class StoreService {
     private calculateCoordinates: CalculateCoordinates,
     private calculateFrete: CalculateFrete,
     private calculateDistances: CalculateDistances,
+    private formatStore1: FormatSores
   ) {}
 
   async createStore(createStoreDto: CreateStoreDTO, cep: string) {
@@ -67,86 +69,21 @@ export class StoreService {
           parseFloat(store.latitude),
           parseFloat(store.longitude),
         );
-        return { ...store.toObject(), distance };
+
+        if(distance <= 50){
+          return this.formatStore1.formatStore(store, distance);
+        }else{
+          const cepDestinoLimpo = store.postalCode.replace('-', '');
+          const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
+  
+          return this.formatStore1.formatStore(store, distance, frete);
+        }
       }),
     );
-
-    const sortedStores = storesWithDistance.sort(
-      (a, b) => a.distance - b.distance,
-    );
-
-    const storesPDV = sortedStores
-      .filter((store) => store.type === 'PDV' && store.distance <= 50)
-      .map((store) => ({
-        name: store.storeName,
-        city: store.city,
-        postalCode: store.postalCode,
-        type: store.type,
-        distance: `${store.distance.toFixed(1)} km`,
-        value: [
-          {
-            prazo: '1 dias úteis',
-            price: 'R$ 15,00',
-            description: 'Motoboy',
-          },
-        ],
-      }));
-
-    
-    const storesLOJA = await Promise.all(
-      sortedStores
-        .filter((store) => store.type === 'LOJA')
-        .map(async (store) => {
-          
-          if (store.distance > 50) {
-
-            const cepDestinoLimpo = store.postalCode.replace('-', '');
-            const frete = await this.calculateFrete.calcularFrete(cep, cepDestinoLimpo);
-
-            return {
-              name: store.storeName,
-              city: store.city,
-              postalCode: store.postalCode,
-              type: store.type,
-              distance: `${store.distance.toFixed(1)} km`,
-              value: [
-                {
-                  prazo: frete[0].prazo,
-                  codProdutoAgencia: frete[0].codProdutoAgencia,
-                  price: frete[0].precoAgencia,
-                  description: 'Sedex a encomenda expressa dos Correios',
-                },
-                {
-                  prazo: frete[1].prazo,
-                  codProdutoAgencia: frete[1].codProdutoAgencia,
-                  price: frete[1].precoAgencia,
-                  description: 'PAC a encomenda econômica dos Correios',
-                },
-              ],
-            };
-          } else {
-            return {
-              name: store.storeName,
-              city: store.city,
-              postalCode: store.postalCode,
-              type: store.type,
-              distance: `${store.distance.toFixed(1)} km`,
-              value: [
-                {
-                  prazo: '1 dias úteis',
-                  price: 'R$ 15,00',
-                  description: 'Motoboy',
-                },
-              ],
-            };
-          }
-        }),
-    );
-
-    const allStores = [...storesPDV, ...storesLOJA];
   
-    allStores.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-    const paginatedStores = allStores.slice(offset, offset + limit);
+    const storesNotNull = storesWithDistance.filter((store) => store !== null);
+    const sortedStores = storesNotNull.sort((a,b) => parseInt(a.distance) -  parseInt(b.distance));
+    const paginatedStores = sortedStores.slice(offset, offset + limit);
 
     return {
       stores: paginatedStores,
@@ -189,7 +126,6 @@ export class StoreService {
     
     const stores = await this.storeModel.find({state: uf}).limit(limit).skip(offset);;
 
-    
     return {
       stores,
       limit,
@@ -197,4 +133,6 @@ export class StoreService {
       total: stores.length,
     };
   }
+
+
 }
