@@ -103,7 +103,9 @@ export class StoreService {
 
   async storeById(id: any) {
     
-      // Conversão para ObjectId e busca no banco
+      
+
+    // verificar se é do tipo objeto
 
       if (!Types.ObjectId.isValid(id)) {
         throw new Error('Invalid ID format');

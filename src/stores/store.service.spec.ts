@@ -76,13 +76,4 @@ describe('StoreService', () => {
     expect(service).toBeDefined();
   });
 
-  // Teste das api's básicas 
-
-  it('should create a store ( PDV or LOJA)', () =>{
-     
-  })
-
-  it('should list the stores by state', () => {
-
-  })
 });
